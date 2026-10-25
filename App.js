@@ -3,11 +3,9 @@ import { View, TextInput, Button, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Keyboard } from 'react-native';
 
-// Set in .env (see .env.example). Expo inlines EXPO_PUBLIC_ values into the JS bundle at build time.
-const API_KEY = process.env.EXPO_PUBLIC_APILAYER_KEY;
-if (!API_KEY) {
-  throw new Error('EXPO_PUBLIC_APILAYER_KEY is not set. Copy .env.example to .env, add an apilayer key and restart Expo with `npx expo start --clear`.');
-}
+// ECB reference rates through Frankfurter: free, no key, CORS allowed, updated each working day.
+// With base=EUR every rate is units of that currency per 1 EUR.
+const RATES_URL = 'https://api.frankfurter.dev/v1/latest?base=EUR';
 
 export default function App() {
   const [currencies, setCurrencies] = useState([]);
@@ -18,17 +16,11 @@ export default function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // EUR is the API's default base, asked for explicitly so the label below can't drift from the data.
-    fetch('https://api.apilayer.com/exchangerates_data/latest?base=EUR', {
-      headers: {
-        apikey: API_KEY
-      }
-    })
+    fetch(RATES_URL)
       .then(async response => {
         const body = await response.json();
-        // A bad key or a used-up quota comes back as JSON without rates.
         if (!response.ok || !body.rates) {
-          throw new Error(body.message || body.error?.info || `HTTP ${response.status}`);
+          throw new Error(body.message || `HTTP ${response.status}`);
         }
         return body;
       })
@@ -51,6 +43,7 @@ export default function App() {
       setConvertedAmount(null);
       return;
     }
+    // rate = units of the chosen currency per 1 EUR, so the amount in EUR is amount / rate.
     setConvertedAmount((value / rate).toFixed(2));
   };
 
@@ -74,6 +67,7 @@ export default function App() {
       />
       <Button title="Convert" onPress={() => { handleConversion(); Keyboard.dismiss(); }} />
       {convertedAmount && <Text>Converted amount in {data.base || 'EUR'}: {convertedAmount}</Text>}
+      {data && <Text style={styles.source}>ECB reference rates from {data.date}, via Frankfurter</Text>}
       {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
@@ -91,6 +85,10 @@ const styles = StyleSheet.create({
     borderColor: 'gray',
     padding: 10,
     marginBottom: 20,
+  },
+  source: {
+    color: 'gray',
+    marginTop: 20,
   },
   error: {
     color: 'red',
