@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, TextInput, Button, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Keyboard } from 'react-native';
+import demoRates from './demoRates';
 
 // ECB reference rates through Frankfurter: free, no key, CORS allowed, updated each working day.
 // With base=EUR every rate is units of that currency per 1 EUR.
@@ -13,7 +14,7 @@ export default function App() {
   const [amount, setAmount] = useState('');
   const [convertedAmount, setConvertedAmount] = useState(null);
   const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
     fetch(RATES_URL)
@@ -24,17 +25,21 @@ export default function App() {
         }
         return body;
       })
-      .then(data => {
-        const currencyCodes = Object.keys(data.rates);
-        setCurrencies(currencyCodes);
-        setSelectedCurrency(currencyCodes[0]);
-        setData(data);
-      })
+      .then(data => showRates(data, false))
       .catch(error => {
-        console.error("Virhe API-kutsussa:", error);
-        setError(`Could not load exchange rates: ${error.message}`);
+        // No network or the API is down: fall back to the bundled sample table, clearly labelled.
+        console.warn("Live rates failed, using demo rates:", error.message);
+        showRates(demoRates, true);
       });
   }, []);
+
+  const showRates = (rates, isDemo) => {
+    const currencyCodes = Object.keys(rates.rates);
+    setCurrencies(currencyCodes);
+    setSelectedCurrency(currencyCodes[0]);
+    setData(rates);
+    setDemo(isDemo);
+  };
 
   const handleConversion = () => {
     const value = parseFloat(amount.replace(',', '.'));
@@ -67,8 +72,8 @@ export default function App() {
       />
       <Button title="Convert" onPress={() => { handleConversion(); Keyboard.dismiss(); }} />
       {convertedAmount && <Text>Converted amount in {data.base || 'EUR'}: {convertedAmount}</Text>}
-      {data && <Text style={styles.source}>ECB reference rates from {data.date}, via Frankfurter</Text>}
-      {error && <Text style={styles.error}>{error}</Text>}
+      {data && !demo && <Text style={styles.source}>ECB reference rates from {data.date}, via Frankfurter</Text>}
+      {demo && <Text style={styles.demo}>Demo rates, not live (sample values from {data.date})</Text>}
     </View>
   );
 }
@@ -90,8 +95,9 @@ const styles = StyleSheet.create({
     color: 'gray',
     marginTop: 20,
   },
-  error: {
-    color: 'red',
+  demo: {
+    color: '#b00020',
+    fontWeight: 'bold',
     marginTop: 20,
   },
 });
