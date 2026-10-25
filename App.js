@@ -17,7 +17,8 @@ export default function App() {
   const [data, setData] = useState(null); 
 
   useEffect(() => {
-    fetch('https://api.apilayer.com/exchangerates_data/latest', {
+    // EUR is the API's default base, asked for explicitly so the label below can't drift from the data.
+    fetch('https://api.apilayer.com/exchangerates_data/latest?base=EUR', {
       headers: {
         apikey: API_KEY
       }
@@ -61,7 +62,7 @@ export default function App() {
         style={styles.input}
       />
       <Button title="Convert" onPress={() => { handleConversion(); Keyboard.dismiss(); }} />
-      {convertedAmount && <Text>Converted amount in EUR: {convertedAmount}</Text>}
+      {convertedAmount && <Text>Converted amount in {data.base || 'EUR'}: {convertedAmount}</Text>}
     </View>
   );
 }
