@@ -14,7 +14,8 @@ export default function App() {
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [amount, setAmount] = useState('');
   const [convertedAmount, setConvertedAmount] = useState(null);
-  const [data, setData] = useState(null); 
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // EUR is the API's default base, asked for explicitly so the label below can't drift from the data.
@@ -23,24 +24,34 @@ export default function App() {
         apikey: API_KEY
       }
     })
-      .then(response => response.json())
+      .then(async response => {
+        const body = await response.json();
+        // A bad key or a used-up quota comes back as JSON without rates.
+        if (!response.ok || !body.rates) {
+          throw new Error(body.message || body.error?.info || `HTTP ${response.status}`);
+        }
+        return body;
+      })
       .then(data => {
         const currencyCodes = Object.keys(data.rates);
         setCurrencies(currencyCodes);
         setSelectedCurrency(currencyCodes[0]);
-        setData(data);  // Added this line
+        setData(data);
       })
       .catch(error => {
         console.error("Virhe API-kutsussa:", error);
+        setError(`Could not load exchange rates: ${error.message}`);
       });
   }, []);
 
   const handleConversion = () => {
-    if (data && data.rates) {
-    const rate = data.rates[selectedCurrency];
-    const result = amount / rate;
-    setConvertedAmount(result.toFixed(2));
+    const value = parseFloat(amount.replace(',', '.'));
+    const rate = data?.rates[selectedCurrency];
+    if (!rate || Number.isNaN(value)) {
+      setConvertedAmount(null);
+      return;
     }
+    setConvertedAmount((value / rate).toFixed(2));
   };
 
   return (
@@ -63,6 +74,7 @@ export default function App() {
       />
       <Button title="Convert" onPress={() => { handleConversion(); Keyboard.dismiss(); }} />
       {convertedAmount && <Text>Converted amount in {data.base || 'EUR'}: {convertedAmount}</Text>}
+      {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 }
@@ -79,6 +91,10 @@ const styles = StyleSheet.create({
     borderColor: 'gray',
     padding: 10,
     marginBottom: 20,
+  },
+  error: {
+    color: 'red',
+    marginTop: 20,
   },
 });
 
