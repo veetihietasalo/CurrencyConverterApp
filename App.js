@@ -3,6 +3,12 @@ import { View, TextInput, Button, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Keyboard } from 'react-native';
 
+// Set in .env (see .env.example). Expo inlines EXPO_PUBLIC_ values into the JS bundle at build time.
+const API_KEY = process.env.EXPO_PUBLIC_APILAYER_KEY;
+if (!API_KEY) {
+  throw new Error('EXPO_PUBLIC_APILAYER_KEY is not set. Copy .env.example to .env, add an apilayer key and restart Expo with `npx expo start --clear`.');
+}
+
 export default function App() {
   const [currencies, setCurrencies] = useState([]);
   const [selectedCurrency, setSelectedCurrency] = useState('');
@@ -13,7 +19,7 @@ export default function App() {
   useEffect(() => {
     fetch('https://api.apilayer.com/exchangerates_data/latest', {
       headers: {
-        'apikey': '4dLTJVLNgCr2VGQYIWg6O4sZiT4O5YQd'
+        apikey: API_KEY
       }
     })
       .then(response => response.json())
